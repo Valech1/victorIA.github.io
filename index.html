@@ -525,7 +525,14 @@
         </div>
 
         <div class="features">
-          <article class="feature-card">
+          <article
+            class="feature-card"
+            data-open-chat
+            data-topic="casas"
+            role="button"
+            tabindex="0"
+            style="cursor: pointer;"
+          >
             <div class="feature-icon">✧</div>
             <h3>Casas mágicas</h3>
             <p>
@@ -533,7 +540,14 @@
             </p>
           </article>
 
-          <article class="feature-card">
+          <article
+            class="feature-card"
+            data-open-chat
+            data-topic="criaturas"
+            role="button"
+            tabindex="0"
+            style="cursor: pointer;"
+          >
             <div class="feature-icon">♧</div>
             <h3>Criaturas fantásticas</h3>
             <p>
@@ -541,7 +555,14 @@
             </p>
           </article>
 
-          <article class="feature-card">
+          <article
+            class="feature-card"
+            data-open-chat
+            data-topic="lugares"
+            role="button"
+            tabindex="0"
+            style="cursor: pointer;"
+          >
             <div class="feature-icon">⌖</div>
             <h3>Lugares memorables</h3>
             <p>
@@ -584,14 +605,83 @@
   </footer>
 
   <script>
-    const chatButtons = document.querySelectorAll("[data-open-chat]");
+    document.getElementById("year").textContent = new Date().getFullYear();
 
-    chatButtons.forEach((button) => {
-      button.addEventListener("click", () => {
+    /*
+      Conexión del chatbot (Botpress):
+      Los elementos con el atributo "data-open-chat" abren el chat de
+      VictorIA. Si además tienen "data-topic", en cuanto el chat está
+      listo se envía automáticamente, en nombre del usuario, la pregunta
+      predefinida en "topicMessages" para ese tema. Los botones sin
+      "data-topic" (por ejemplo "Comenzar la aventura") solo abren el
+      chat para que el usuario escriba lo que quiera.
+
+      La respuesta que da VictorIA depende de cómo esté configurado el
+      bot en Botpress Studio; esto solo se encarga de disparar la
+      pregunta correcta desde cada botón/tarjeta.
+    */
+
+    const topicMessages = {
+      casas: "Cuéntame sobre los valores, las cualidades y las tradiciones que definen a cada una de las casas mágicas.",
+      criaturas: "Cuéntame sobre las criaturas fantásticas más importantes: sus características y sus historias.",
+      lugares: "Cuéntame sobre los lugares mágicos más memorables, como castillos, calles y bosques, y qué los hace especiales."
+    };
+
+    let webchatReady = false;
+    let pendingMessage = null;
+
+    function whenBotpressAvailable(callback) {
+      if (window.botpress) {
+        callback();
+        return;
+      }
+      const checkInterval = setInterval(() => {
         if (window.botpress) {
-          window.botpress.open();
+          clearInterval(checkInterval);
+          callback();
+        }
+      }, 200);
+      setTimeout(() => clearInterval(checkInterval), 10000);
+    }
+
+    function attachBotpressListeners() {
+      window.botpress.on("webchat:ready", () => {
+        webchatReady = true;
+        if (pendingMessage) {
+          window.botpress.sendMessage(pendingMessage);
+          pendingMessage = null;
         }
       });
+    }
+
+    whenBotpressAvailable(attachBotpressListeners);
+
+    function openVictorIA(message) {
+      whenBotpressAvailable(() => {
+        window.botpress.open();
+        if (!message) return;
+        if (webchatReady) {
+          window.botpress.sendMessage(message);
+        } else {
+          pendingMessage = message;
+        }
+      });
+    }
+
+    document.querySelectorAll("[data-open-chat]").forEach((element) => {
+      const topic = element.getAttribute("data-topic");
+      const message = topic ? topicMessages[topic] : null;
+
+      element.addEventListener("click", () => openVictorIA(message));
+
+      if (element.tagName !== "BUTTON" && element.tagName !== "A") {
+        element.addEventListener("keydown", (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            openVictorIA(message);
+          }
+        });
+      }
     });
   </script>
 
